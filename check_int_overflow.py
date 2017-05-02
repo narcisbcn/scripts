@@ -46,8 +46,8 @@ if __name__ == "__main__":
   parser = OptionParser(usage = usage)
   parser.add_option('-H', '--host', dest = 'host', help = 'Database host')
   parser.add_option('-u', '--user', dest = 'user', help = 'Database username')
-  parser.add_option('-p', '--password', dest = 'password', help = 'Database Password')
-  parser.add_option('-P', '--port', dest = 'port', help = 'Database port')
+  parser.add_option('-p', '--password', dest = 'password', help = 'Database Password', default = '')
+  parser.add_option('-P', '--port', dest = 'port', help = 'Database port', default = 3306)
   parser.add_option('-w', '--warning', dest = 'warning', help = 'Warning threshold is the % between current connections and max connections (int).')
   parser.add_option('-c', '--critical', dest = 'critical', help = 'Critical threshhold is the % between current connections and max connections (int).')
   (options,args) = parser.parse_args()
@@ -58,13 +58,9 @@ if __name__ == "__main__":
   port = options.port
   warning = int(options.warning)
   critical = int(options.critical)
+  status_code = 0
+  of_pct = 0
 
-  # Sanity check. Ugly but there is a bug which has not allow to define a default int value on funcion definition.
-  if not port:
-    port = 3306
-  else:
-    port=int(port)
-  
   getcontext().prec = 10
   tinyint = 127
   smallint = 32767
@@ -86,30 +82,29 @@ if __name__ == "__main__":
     column = row['column_name']
     column_type = row['column_type']
     column_key = row['column_key']
+
     if column_key and column_key == 'PRI':
-      max_int = find_max(host, user, passwd, port, column,schema,table) 
+      max_int = find_max(host, user, passwd, port, column,schema,table)
 
       if max_int is None:
         max_int = 0
-  
+
       unsigned = False
       if 'unsigned' in column_type:
          unsigned = True
-  
+
       # Clean up column_type information
       int_type = column_type.split('(')[0]
 
-  
-      of_pct = 0
       if not unsigned:
         if int_type == "tinyint": of_pct = (Decimal(max_int)/Decimal(tinyint))*100
         elif int_type == "smallint": of_pct = (Decimal(max_int)/Decimal(smallint))*100
         elif int_type == "mediumint": of_pct = (Decimal(max_int)/Decimal(mediumint))*100
         elif int_type == "int": of_pct = (Decimal(max_int)/Decimal(int))*100
         elif int_type == "bigint": of_pct = (Decimal(max_int)/Decimal(bigint))*100
-        else: of_pct = 0 
-      
-      else: 
+        else: of_pct = 0
+
+      else:
         if int_type == "tinyint": of_pct = (Decimal(max_int)/Decimal(tinyint_us))*100
         elif int_type == "smallint": of_pct = (Decimal(max_int)/Decimal(smallint_us))*100
         elif int_type == "mediumint": of_pct = (Decimal(max_int)/Decimal(mediumint_us))*100
@@ -117,4 +112,11 @@ if __name__ == "__main__":
         elif int_type == "bigint": of_pct = (Decimal(max_int)/Decimal(bigint_us))*100
         else: of_pct = 0
 
-      print "On Database: %s Table: %s Row: %s the percentage used is: %.2f %%" % (schema, table, column, of_pct)
+      if of_pct >= critical:
+        status_code = 2
+        print "On Database: %s Table: %s Row: %s the percentage used is: %.2f %%" % (schema, table, column, of_pct)
+      elif of_pct >= warning:
+        if status_code != 2: status_code = 1
+        print "On Database: %s Table: %s Row: %s the percentage used is: %.2f %%" % (schema, table, column, of_pct)
+
+  sys.exit(status_code)
