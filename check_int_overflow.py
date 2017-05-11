@@ -1,8 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf8 -*-
 # ======================================================================
-# License: GPL License (see COPYING)
-# Copyright 2013 PalominoDB Inc.
+# Author: Narcís Pillao
 # ======================================================================
 
 from optparse import OptionParser
