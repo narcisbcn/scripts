@@ -31,6 +31,7 @@ def find_max(host, user, password='', port='', col=None, t_schema=None, t_name=N
   try:
     conn = MySQLdb.connect(host=host, user=user, passwd=password, port=port, db=t_schema, cursorclass=MySQLdb.cursors.DictCursor)
     cursor = conn.cursor()
+    cursor.execute("select auto_increment as Value from information_schema.tables where table_name=%s" , (t_name))
     cursor.execute("select max(%s) as Value from %s" % (col, t_name))
     row = cursor.fetchone()['Value']
     cursor.close()
